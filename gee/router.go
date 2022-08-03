@@ -1,22 +1,76 @@
 package gee
 
 import (
-	"log"
 	"net/http"
+	"strings"
 )
 
 type router struct {
+	roots    map[string]*node
 	handlers map[string]handlerFunc
 }
 
 func newRouter() *router {
-	return &router{handlers: make(map[string]handlerFunc)}
+	return &router{
+		roots:    make(map[string]*node),
+		handlers: make(map[string]handlerFunc),
+	}
+}
+
+func parsePattern(pattern string) []string {
+	vs := strings.Split(pattern, "/")
+
+	parts := make([]string, 0)
+	for _, item := range vs {
+		if item != "" {
+			parts = append(parts, item)
+			if item[0] == '*' {
+				break
+			}
+		}
+	}
+
+	return parts
 }
 
 func (r *router) addRouter(method string, pattern string, f handlerFunc) {
-	log.Printf("Route %4s - %s", method, pattern)
+	parts := parsePattern(pattern)
 	key := method + "-" + pattern
+
+	if _, ok := r.roots[method]; !ok {
+		r.roots[method] = &node{}
+	}
+
+	r.roots[method].insert(method, parts, 0)
 	r.handlers[key] = f
+}
+
+func (r *router) getRouter(method string, pattern string) (*node, map[string]string) {
+	searchParts := parsePattern(pattern)
+	params := make(map[string]string)
+
+	root, ok := r.roots[method]
+	if !ok {
+		return nil, nil
+	}
+
+	n := root.search(searchParts, 0)
+
+	if n != nil {
+		parts := parsePattern(n.pattern)
+		for index, part := range parts {
+			if part[0] == ':' && len(part) > 1 {
+				params[part[1:]] = searchParts[index]
+			}
+			if part[0] == '*' && len(part) > 1 {
+				params[part[1:]] = strings.Join(searchParts[index:], "/")
+				break
+			}
+		}
+		return n, params
+	}
+
+	return nil, nil
 }
 
 func (r *router) ServeHTTP(c *Context) {
