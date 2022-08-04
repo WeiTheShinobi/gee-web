@@ -1,36 +1,44 @@
 package gee
 
 import (
+	"log"
 	"net/http"
 )
 
-type handlerFunc func(*Context)
+// HandlerFunc defines the request handler used by gee
+type HandlerFunc func(*Context)
 
+// Engine implement the interface of ServeHTTP
 type Engine struct {
 	router *router
 }
 
+// New is the constructor of gee.Engine
 func New() *Engine {
 	return &Engine{router: newRouter()}
 }
 
-func (e *Engine) addRouter(method string, url string, f handlerFunc) {
-	e.router.addRouter(method, url, f)
+func (engine *Engine) addRoute(method string, pattern string, handler HandlerFunc) {
+	log.Printf("Route %4s - %s", method, pattern)
+	engine.router.addRoute(method, pattern, handler)
 }
 
-func (e *Engine) Get(url string, f handlerFunc) {
-	e.addRouter("GET", url, f)
+// GET defines the method to add GET request
+func (engine *Engine) GET(pattern string, handler HandlerFunc) {
+	engine.addRoute("GET", pattern, handler)
 }
 
-func (e *Engine) Post(url string, f handlerFunc) {
-	e.addRouter("POST", url, f)
+// POST defines the method to add POST request
+func (engine *Engine) POST(pattern string, handler HandlerFunc) {
+	engine.addRoute("POST", pattern, handler)
 }
 
-func (e *Engine) Run(addr string) error {
-	return http.ListenAndServe(addr, e)
+// Run defines the method to start a http server
+func (engine *Engine) Run(addr string) (err error) {
+	return http.ListenAndServe(addr, engine)
 }
 
-func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	c := newContext(w, r)
-	e.router.ServeHTTP(c)
+func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	c := newContext(w, req)
+	engine.router.handle(c)
 }

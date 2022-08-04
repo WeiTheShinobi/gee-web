@@ -9,35 +9,37 @@ import (
 type H map[string]interface{}
 
 type Context struct {
-	// http
-	Writer  http.ResponseWriter
-	Request *http.Request
-	// router
-	Path       string
-	Method     string
-	Params     map[string]string
+	// origin objects
+	Writer http.ResponseWriter
+	Req    *http.Request
+	// request info
+	Path   string
+	Method string
+	Params map[string]string
+	// response info
 	StatusCode int
 }
 
-func newContext(w http.ResponseWriter, r *http.Request) *Context {
+func newContext(w http.ResponseWriter, req *http.Request) *Context {
 	return &Context{
-		Writer:  w,
-		Request: r,
-		Path:    r.URL.Path,
-		Method:  r.Method,
+		Writer: w,
+		Req:    req,
+		Path:   req.URL.Path,
+		Method: req.Method,
 	}
 }
 
 func (c *Context) Param(key string) string {
-	return c.Params[key]
+	value, _ := c.Params[key]
+	return value
 }
 
 func (c *Context) PostForm(key string) string {
-	return c.Request.FormValue(key)
+	return c.Req.FormValue(key)
 }
 
-func (c *Context) Get(key string) string {
-	return c.Request.URL.Query().Get(key)
+func (c *Context) Query(key string) string {
+	return c.Req.URL.Query().Get(key)
 }
 
 func (c *Context) Status(code int) {
@@ -45,8 +47,8 @@ func (c *Context) Status(code int) {
 	c.Writer.WriteHeader(code)
 }
 
-func (c *Context) SetHeader(key string, val string) {
-	c.Writer.Header().Set(key, val)
+func (c *Context) SetHeader(key string, value string) {
+	c.Writer.Header().Set(key, value)
 }
 
 func (c *Context) String(code int, format string, values ...interface{}) {
@@ -60,7 +62,7 @@ func (c *Context) JSON(code int, obj interface{}) {
 	c.Status(code)
 	encoder := json.NewEncoder(c.Writer)
 	if err := encoder.Encode(obj); err != nil {
-		panic(err)
+		http.Error(c.Writer, err.Error(), 500)
 	}
 }
 
