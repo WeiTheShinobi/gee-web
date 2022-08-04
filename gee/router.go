@@ -73,6 +73,17 @@ func (r *router) getRouter(method string, pattern string) (*node, map[string]str
 	return nil, nil
 }
 
+func (r *router) handle(c *Context) {
+	n, params := r.getRouter(c.Method, c.Path)
+	if n != nil {
+		c.Params = params
+		key := c.Method + "-" + n.pattern
+		r.handlers[key](c)
+	} else {
+		c.String(http.StatusNotFound, "404 NOT FOUND: %s", c.Path)
+	}
+}
+
 func (r *router) ServeHTTP(c *Context) {
 	key := c.Request.Method + "-" + c.Request.URL.Path
 	if handler, ok := r.handlers[key]; ok {
