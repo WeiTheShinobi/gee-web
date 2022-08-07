@@ -13,6 +13,7 @@ func main() {
 	})
 
 	v1 := r.Group("/v1")
+	v1.Use(gee.Logger())
 	{
 		v1.GET("/", func(c *gee.Context) {
 			c.String(http.StatusOK, "gugugu")
